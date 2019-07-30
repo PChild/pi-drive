@@ -45,9 +45,9 @@ def arcade_drive(controller, drive_scale=0.6, debug=False):
         left = 0
         right = 0
 
-    if debug:
+    if debug or WINDOWS:
         print('Left:', left, '\tRight', right)
-    elif not WINDOWS:
+    else:
         motors['left_drive'] = left
         motors['right_drive'] = right
 
@@ -68,9 +68,9 @@ def tank_drive(controller, drive_scale=0.6, debug=False):
         left = 0
         right = 0
 
-    if debug:
+    if debug or WINDOWS:
         print('Left:', left, '\tRight:', right)
-    elif not WINDOWS:
+    else:
         motors['left_drive'].value = left
         motors['right_drive'].value = right
 
@@ -91,9 +91,9 @@ def shooter(controller, intake_scale=0.3, shoot_scale=0.8, debug=False):
 
     fire_kicker = True if overall > 0 and controller.A else False
 
-    if debug:
-        print('Speed:', overall ,'\tKicker:', fire_kicker)
-    elif not WINDOWS:
+    if debug or WINDOWS:
+        print('Speed:', overall, '\tKicker:', fire_kicker)
+    else:
         motors['left_shooter'].value = overall
         motors['right_shooter'].value = overall
 
@@ -117,9 +117,9 @@ def dart(controller, dart_scale=0.8, debug=False):
     else:
         output = 0.0
 
-    if debug:
+    if debug or WINDOWS:
         print('Dart:', output)
-    elif not WINDOWS:
+    else:
         motors['dart'].value = output
 
 
@@ -132,7 +132,7 @@ def main():
 
     while True:
         arcade_drive(controller, debug=True)
-        shooter(controller)
+        shooter(controller, debug=True)
         dart(controller)
 
 
