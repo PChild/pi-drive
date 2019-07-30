@@ -1,4 +1,4 @@
-from gpiozero import PWMOutputDevice, DigitalOutputDevice
+from gpiozero import Servo, DigitalOutputDevice
 from xbox import XboxController
 from sys import platform
 
@@ -8,14 +8,46 @@ WINDOWS = platform == 'win32'
 '''Set up gpio outputs if actually on a pi'''
 # TODO get real pin values
 if not WINDOWS:
-    motors = {'left_drive': PWMOutputDevice(pin=1),
-              'right_drive': PWMOutputDevice(pin=2),
-              'dart': PWMOutputDevice(pin=3),
-              'left_shooter': PWMOutputDevice(pin=4),
-              'right_shooter': PWMOutputDevice(pin=5)}
+    motors = {'left_drive': Servo(pin='WPI30'),
+              'right_drive': Servo(pin='WPI21'),
+              'dart': Servo(pin='WPI22'),
+              'left_shooter': Servo(pin='WPI23'),
+              'right_shooter': Servo(pin='WPI24')}
 
-    solenoids = {'kicker': DigitalOutputDevice(pin=6),
-                 'compressor': DigitalOutputDevice(pin=7)}
+    solenoids = {'kicker': DigitalOutputDevice(pin='WPI25')}
+
+
+def clamp(value, min_val, max_val):
+    """
+    Clamps a number between a min and a max value.
+
+    :param value: the value to be clamped
+    :param min_val: the minimum
+    :param max_val: the maximum
+    :return the clamped value
+    """
+
+    return max(min(value, max_val), min_val)
+
+
+def arcade_drive(controller, drive_scale=0.6, debug=False):
+    """
+    Implements an arcade drive for the robot.
+
+    :param controller: the gamepad to use
+    :param drive_scale: scaling factor for the drive
+    :param debug: whether or not to debug and print values
+    """
+    trans = -1.0 * controller.LeftJoystickY
+    rot = controller.RightJoystickX
+    left = clamp(trans + rot, -1.0, 1.0)
+    right = clamp(trans - rot, -1.0, 1.0)
+
+    if debug:
+        print('Left:', left, '\tRight', right)
+    else:
+         if not WINDOWS:
+              motors['left_drive'] = 0
 
 
 def tank_drive(controller, drive_scale=0.6, debug=False):
@@ -33,14 +65,12 @@ def tank_drive(controller, drive_scale=0.6, debug=False):
     if controller.RightThumb:
         left = 0
         right = 0
-
-    if not WINDOWS:
-        motors['left_drive'].value = left
-        motors['right_drive'].value = right
+    if debug:
+        print('Left:', left, '\tRight:', right)
     else:
-        if debug:
-            print('Left:', left, '\tRight:', right)
-
+    	if not WINDOWS:
+        	motors['left_drive'].value = left
+        	motors['right_drive'].value = right
 
 def shooter(controller, intake_scale=0.3, shoot_scale=0.8,  debug=False):
     """
@@ -56,13 +86,11 @@ def shooter(controller, intake_scale=0.3, shoot_scale=0.8,  debug=False):
     shoot_speed = controller.RightTrigger * shoot_scale
     overall = shoot_speed + intake_speed
 
-    left = -1.0 * overall
-    right = overall
     fire_kicker = True if overall > 0 and controller.A else False
 
     if not WINDOWS:
-        motors['left_shooter'].value = left
-        motors['right_shooter'].value = right
+        motors['left_shooter'].value = overall
+        motors['right_shooter'].value = overall
 
         if fire_kicker:
             solenoids['kicker'].on()
@@ -94,15 +122,6 @@ def dart(controller, dart_scale=0.8, debug=False):
             motors['dart'].value = output
 
 
-def compressor():
-    """
-    Keep compressor pwm on full on to work with relay.
-    No op on non-pi hardware.
-    """
-    if not WINDOWS:
-        solenoids['compressor'].on()
-
-
 def main():
     """
     Main function for running robot code, should never exit.
@@ -112,8 +131,7 @@ def main():
     controller = XboxController()
 
     while True:
-        compressor()
-        tank_drive(controller)
+        arcade_drive(controller, debug=True)
         shooter(controller)
         dart(controller)
 
