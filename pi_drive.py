@@ -6,7 +6,6 @@ from sys import platform
 WINDOWS = platform == 'win32'
 
 '''Set up gpio outputs if actually on a pi'''
-# TODO get real pin values
 if not WINDOWS:
     motors = {'left_drive': Servo(pin='WPI30'),
               'right_drive': Servo(pin='WPI21'),
@@ -26,28 +25,31 @@ def clamp(value, min_val, max_val):
     :param max_val: the maximum
     :return the clamped value
     """
-
     return max(min(value, max_val), min_val)
 
 
 def arcade_drive(controller, drive_scale=0.6, debug=False):
     """
-    Implements an arcade drive for the robot.
+    Implements an arcade drive for the 2016 robot.
 
     :param controller: the gamepad to use
     :param drive_scale: scaling factor for the drive
     :param debug: whether or not to debug and print values
     """
-    trans = -1.0 * controller.LeftJoystickY
+    trans = -1.0 * controller.LeftJoystickY * drive_scale
     rot = controller.RightJoystickX
     left = clamp(trans + rot, -1.0, 1.0)
     right = clamp(trans - rot, -1.0, 1.0)
 
+    if controller.RightThumb:
+        left = 0
+        right = 0
+
     if debug:
         print('Left:', left, '\tRight', right)
-    else:
-         if not WINDOWS:
-              motors['left_drive'] = 0
+    elif not WINDOWS:
+        motors['left_drive'] = left
+        motors['right_drive'] = right
 
 
 def tank_drive(controller, drive_scale=0.6, debug=False):
@@ -65,14 +67,15 @@ def tank_drive(controller, drive_scale=0.6, debug=False):
     if controller.RightThumb:
         left = 0
         right = 0
+
     if debug:
         print('Left:', left, '\tRight:', right)
-    else:
-    	if not WINDOWS:
-        	motors['left_drive'].value = left
-        	motors['right_drive'].value = right
+    elif not WINDOWS:
+        motors['left_drive'].value = left
+        motors['right_drive'].value = right
 
-def shooter(controller, intake_scale=0.3, shoot_scale=0.8,  debug=False):
+
+def shooter(controller, intake_scale=0.3, shoot_scale=0.8, debug=False):
     """
     Logic for controlling shooter on 401's 2016 robot.
     Can print duty cycle output values on non-pi hardware.
@@ -88,7 +91,9 @@ def shooter(controller, intake_scale=0.3, shoot_scale=0.8,  debug=False):
 
     fire_kicker = True if overall > 0 and controller.A else False
 
-    if not WINDOWS:
+    if debug:
+        print('Speed:', overall ,'\tKicker:', fire_kicker)
+    elif not WINDOWS:
         motors['left_shooter'].value = overall
         motors['right_shooter'].value = overall
 
@@ -96,9 +101,6 @@ def shooter(controller, intake_scale=0.3, shoot_scale=0.8,  debug=False):
             solenoids['kicker'].on()
         else:
             solenoids['kicker'].off()
-    else:
-        if debug:
-            print('Left:', left, '\tRight:', right, '\tKicker:', fire_kicker)
 
 
 def dart(controller, dart_scale=0.8, debug=False):
@@ -117,17 +119,15 @@ def dart(controller, dart_scale=0.8, debug=False):
 
     if debug:
         print('Dart:', output)
-    else:
-        if not WINDOWS:
-            motors['dart'].value = output
+    elif not WINDOWS:
+        motors['dart'].value = output
 
 
 def main():
     """
     Main function for running robot code, should never exit.
+    Currently this ONLY works with an xbox 360 controller.
     """
-
-    ''' Currently this ONLY works with an xbox 360 controller'''
     controller = XboxController()
 
     while True:
